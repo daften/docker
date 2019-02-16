@@ -1,6 +1,7 @@
 FROM php:7.2-apache
 
 RUN cp "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
+RUN sed -i 's/memory_limit = .*/memory_limit = '-1'/' $PHP_INI_DIR/php.ini
 
 RUN a2enmod rewrite
 
