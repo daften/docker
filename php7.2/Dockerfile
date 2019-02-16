@@ -44,7 +44,7 @@ RUN git clone https://github.com/nikic/php-ast.git \
   && rm php-ast -rf
 
 #install drush, to use for site and module installs
-RUN curl -L -o drush.phar $(curl -s  https://api.github.com/repos/drush-ops/drush/releases/latest | grep drush/releases/download | cut -d '"' -f 4) \
+RUN curl -L -o drush.phar https://github.com/drush-ops/drush/releases/download/8.1.18/drush.phar \
   && chmod +x drush.phar \
   && mv drush.phar /usr/local/bin/drush
 
