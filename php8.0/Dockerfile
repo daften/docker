@@ -1,29 +1,27 @@
-FROM php:7.2-apache
-
-RUN cp "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
-RUN sed -i 's/memory_limit = .*/memory_limit = '-1'/' $PHP_INI_DIR/php.ini
+FROM php:8.0-apache
 
 RUN a2enmod rewrite
 
 # install the PHP extensions we need
 RUN apt-get update && apt-get install -y gnupg libpng-dev libjpeg-dev libpq-dev default-mysql-client git libbz2-dev libonig-dev
-RUN apt-get update && apt-get install -y libgmp-dev libxml2-dev acl unzip gnupg bc bzip2 wget libzip-dev libxslt-dev libmagickwand-dev
+RUN apt-get update && apt-get install -y libgmp-dev libxml2-dev acl unzip bc bzip2 wget libzip-dev libxslt-dev libmagickwand-dev
 RUN pecl install xdebug && docker-php-ext-enable xdebug
 RUN ln -s /usr/include/x86_64-linux-gnu/gmp.h /usr/include/gmp.h
 RUN rm -rf /var/lib/apt/lists/*
 RUN docker-php-ext-configure gd
-RUN docker-php-ext-install gd mbstring pdo pdo_mysql pdo_pgsql zip bcmath bz2 gmp soap xsl intl calendar
-RUN pecl install imagick && docker-php-ext-enable imagick
+RUN docker-php-ext-install gd mbstring pdo pdo_mysql pdo_pgsql zip bcmath bz2 gmp soap xsl intl calendar 
 RUN pecl install pcov && docker-php-ext-enable pcov
 
-RUN echo 'sendmail_path=/bin/true' > /usr/local/etc/php/conf.d/sendmail.ini
+# Switch back to PECL once a stable release is tagged
+RUN git clone https://github.com/Imagick/imagick \
+  && cd imagick \
+  && phpize && ./configure \
+  && make \
+  && make install
 
-#install phantomjs
-RUN apt-get update && apt-get install -y build-essential chrpath libssl-dev libxft-dev libfreetype6-dev libfreetype6 libfontconfig1-dev libfontconfig1 \
-  && wget https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-2.1.1-linux-x86_64.tar.bz2 \
-  && tar jxf phantomjs-2.1.1-linux-x86_64.tar.bz2 \
-  && mv phantomjs-2.1.1-linux-x86_64/bin/phantomjs /usr/local/bin/phantomjs \
-  && chmod +x /usr/local/bin/phantomjs
+RUN docker-php-ext-enable imagick
+
+RUN echo 'sendmail_path=/bin/true' > /usr/local/etc/php/conf.d/sendmail.ini
 
 #install latest chrome
 RUN curl -sS -o - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
@@ -47,11 +45,6 @@ RUN git clone https://github.com/nikic/php-ast.git \
   && echo 'extension=ast.so' > /usr/local/etc/php/conf.d/ast.ini \
   && cd .. \
   && rm php-ast -rf
-
-#install drush, to use for site and module installs
-RUN curl -L -o drush.phar https://github.com/drush-ops/drush/releases/download/8.1.18/drush.phar \
-  && chmod +x drush.phar \
-  && mv drush.phar /usr/local/bin/drush
 
 # Register the COMPOSER_HOME environment variable
 ENV COMPOSER_HOME /composer
@@ -96,8 +89,8 @@ RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - \
 
 # Install security advisories checker
 RUN curl -sL https://github.com/fabpot/local-php-security-checker/releases/download/v1.0.0/local-php-security-checker_1.0.0_linux_amd64 -o security-checker \
-  && chmod +x security-checker \
-  && mv security-checker /usr/local/bin/security-checker
+    && chmod +x security-checker \
+    && mv security-checker /usr/local/bin/security-checker
 
 RUN curl -sS https://platform.sh/cli/installer | php
 
@@ -110,5 +103,5 @@ RUN SCVERSION="stable" \
   && rm -rf "shellcheck-${SCVERSION}"
 
 RUN npm -g install smmccabe/commercebot
-
-RUN apt-get update && apt-get install -y rsync
+  
+RUN apt-get update && apt-get install -y rsync  

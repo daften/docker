@@ -1,14 +1,17 @@
-FROM php:apache
+FROM php:7.3-apache
 
 RUN a2enmod rewrite
 
 # install the PHP extensions we need
-
-RUN apt-get update && apt-get install -y gnupg libpng-dev libjpeg-dev libpq-dev mysql-client git libbz2-dev libgmp-dev libxml2-dev acl unzip gnupg bc bzip2 wget
+RUN apt-get update && apt-get install -y gnupg libpng-dev libjpeg-dev libpq-dev default-mysql-client git libbz2-dev libonig-dev
+RUN apt-get update && apt-get install -y libgmp-dev libxml2-dev acl unzip bc bzip2 wget libzip-dev libxslt-dev libmagickwand-dev
+RUN pecl install xdebug && docker-php-ext-enable xdebug
 RUN ln -s /usr/include/x86_64-linux-gnu/gmp.h /usr/include/gmp.h
 RUN rm -rf /var/lib/apt/lists/*
-RUN docker-php-ext-configure gd --with-png-dir=/usr --with-jpeg-dir=/usr
-RUN docker-php-ext-install gd mbstring pdo pdo_mysql pdo_pgsql zip bcmath bz2 gmp soap
+RUN docker-php-ext-configure gd
+RUN docker-php-ext-install gd mbstring pdo pdo_mysql pdo_pgsql zip bcmath bz2 gmp soap xsl intl calendar
+RUN pecl install imagick && docker-php-ext-enable imagick
+RUN pecl install pcov && docker-php-ext-enable pcov
 
 RUN echo 'sendmail_path=/bin/true' > /usr/local/etc/php/conf.d/sendmail.ini
 
@@ -42,16 +45,11 @@ RUN git clone https://github.com/nikic/php-ast.git \
   && cd .. \
   && rm php-ast -rf
 
-#install drush, to use for site and module installs
-RUN curl -L -o drush.phar $(curl -s  https://api.github.com/repos/drush-ops/drush/releases/latest | grep drush/releases/download | cut -d '"' -f 4) \
-  && chmod +x drush.phar \
-  && mv drush.phar /usr/local/bin/drush
-
 # Register the COMPOSER_HOME environment variable
 ENV COMPOSER_HOME /composer
 
 # Add global binary directory to PATH and make sure to re-export it
-ENV PATH /composer/vendor/bin:$PATH
+ENV PATH ./vendor/bin:/composer/vendor/bin:$PATH
 
 # Allow Composer to be run as root
 ENV COMPOSER_ALLOW_SUPERUSER 1
@@ -60,44 +58,49 @@ ENV COMPOSER_ALLOW_SUPERUSER 1
 RUN curl -o /tmp/composer-setup.php https://getcomposer.org/installer \
   && php /tmp/composer-setup.php --no-ansi --install-dir=/usr/local/bin --filename=composer && rm -rf /tmp/composer-setup.php
 
-#allows for parallel composer downloads
-RUN composer global require "hirak/prestissimo:^0.3"
+RUN wget -c https://phpmd.org/static/latest/phpmd.phar \
+  && chmod +x phpmd.phar \
+  && mv phpmd.phar /usr/local/bin/phpmd
 
-#drupal console
-RUN curl https://drupalconsole.com/installer -L -o drupal.phar \
-  && chmod +x drupal.phar \
-  && mv drupal.phar /usr/local/bin/drupal
+RUN wget https://github.com/smmccabe/phpdebt/releases/download/1.0.2/phpdebt.phar \
+  && chmod +x phpdebt.phar \
+  && mv phpdebt.phar /usr/local/bin/phpdebt
 
-#code standards
-RUN curl -OL https://squizlabs.github.io/PHP_CodeSniffer/phpcs.phar \
- && chmod +x phpcs.phar \
- && mv phpcs.phar /usr/local/bin/phpcs
-
-RUN composer global require drupal/coder \
-  && phpcs --config-set installed_paths /composer/vendor/drupal/coder/coder_sniffer
-
-RUN composer global require phpmd/phpmd
+RUN wget https://phar.phpunit.de/phploc.phar \
+  && chmod +x phploc.phar \
+  && mv phploc.phar /usr/local/bin/phploc
 
 RUN composer global require sebastian/phpcpd
 
-RUN composer global require smmccabe/phpdebt
+# Readme check
+RUN wget https://raw.githubusercontent.com/smmccabe/readmecheck/master/readmecheck \
+  && chmod +x readmecheck \
+  && mv readmecheck /usr/local/bin/readmecheck
 
-RUN curl -sL https://deb.nodesource.com/setup_8.x -o nodesource_setup.sh \
-  && bash nodesource_setup.sh \
-  && rm nodesource_setup.sh \
+# Node
+RUN curl -sL https://deb.nodesource.com/setup_10.x | bash - \
   && apt-get install -y nodejs
 
+# Yarn
 RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - \
   && echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list \
   && apt-get update && apt-get install yarn
 
-# Install SensioLabs' security advisories checker
-RUN curl -sL http://get.sensiolabs.org/security-checker.phar -o security-checker.phar \
-  && chmod +x security-checker.phar \
-  && mv security-checker.phar /usr/local/bin/security-checker
-
-# Xdebug requires beta to support PHP 7.2.
-RUN pecl install xdebug \
-    && echo "zend_extension=$(find / -name xdebug.so)" > /usr/local/etc/php/conf.d/xdebug.ini
+# Install security advisories checker
+RUN curl -sL https://github.com/fabpot/local-php-security-checker/releases/download/v1.0.0/local-php-security-checker_1.0.0_linux_amd64 -o security-checker \
+    && chmod +x security-checker \
+    && mv security-checker /usr/local/bin/security-checker
 
 RUN curl -sS https://platform.sh/cli/installer | php
+
+# Install shellcheck utility.
+RUN SCVERSION="stable" \
+  && apt-get install xz-utils \
+  && curl -sLO https://github.com/koalaman/shellcheck/releases/download/${SCVERSION?}/shellcheck-${SCVERSION?}.linux.x86_64.tar.xz \
+  && tar -xJvf shellcheck-${SCVERSION}.linux.x86_64.tar.xz \
+  && mv "shellcheck-${SCVERSION}/shellcheck" /usr/local/bin/ \
+  && rm -rf "shellcheck-${SCVERSION}"
+
+RUN npm -g install smmccabe/commercebot
+
+RUN apt-get update && apt-get install -y rsync  

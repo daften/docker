@@ -1,18 +1,15 @@
-FROM php:7.2-apache
-
-RUN cp "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
-RUN sed -i 's/memory_limit = .*/memory_limit = '-1'/' $PHP_INI_DIR/php.ini
+FROM php:7.4-apache
 
 RUN a2enmod rewrite
 
 # install the PHP extensions we need
 RUN apt-get update && apt-get install -y gnupg libpng-dev libjpeg-dev libpq-dev default-mysql-client git libbz2-dev libonig-dev
-RUN apt-get update && apt-get install -y libgmp-dev libxml2-dev acl unzip gnupg bc bzip2 wget libzip-dev libxslt-dev libmagickwand-dev
+RUN apt-get update && apt-get install -y libgmp-dev libxml2-dev acl unzip bc bzip2 wget libzip-dev libxslt-dev libmagickwand-dev
 RUN pecl install xdebug && docker-php-ext-enable xdebug
 RUN ln -s /usr/include/x86_64-linux-gnu/gmp.h /usr/include/gmp.h
 RUN rm -rf /var/lib/apt/lists/*
 RUN docker-php-ext-configure gd
-RUN docker-php-ext-install gd mbstring pdo pdo_mysql pdo_pgsql zip bcmath bz2 gmp soap xsl intl calendar
+RUN docker-php-ext-install gd mbstring pdo pdo_mysql pdo_pgsql zip bcmath bz2 gmp soap xsl intl calendar 
 RUN pecl install imagick && docker-php-ext-enable imagick
 RUN pecl install pcov && docker-php-ext-enable pcov
 
@@ -47,11 +44,6 @@ RUN git clone https://github.com/nikic/php-ast.git \
   && echo 'extension=ast.so' > /usr/local/etc/php/conf.d/ast.ini \
   && cd .. \
   && rm php-ast -rf
-
-#install drush, to use for site and module installs
-RUN curl -L -o drush.phar https://github.com/drush-ops/drush/releases/download/8.1.18/drush.phar \
-  && chmod +x drush.phar \
-  && mv drush.phar /usr/local/bin/drush
 
 # Register the COMPOSER_HOME environment variable
 ENV COMPOSER_HOME /composer
@@ -96,8 +88,8 @@ RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - \
 
 # Install security advisories checker
 RUN curl -sL https://github.com/fabpot/local-php-security-checker/releases/download/v1.0.0/local-php-security-checker_1.0.0_linux_amd64 -o security-checker \
-  && chmod +x security-checker \
-  && mv security-checker /usr/local/bin/security-checker
+    && chmod +x security-checker \
+    && mv security-checker /usr/local/bin/security-checker
 
 RUN curl -sS https://platform.sh/cli/installer | php
 
@@ -110,5 +102,5 @@ RUN SCVERSION="stable" \
   && rm -rf "shellcheck-${SCVERSION}"
 
 RUN npm -g install smmccabe/commercebot
-
-RUN apt-get update && apt-get install -y rsync
+  
+RUN apt-get update && apt-get install -y rsync  

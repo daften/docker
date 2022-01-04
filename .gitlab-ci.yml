@@ -1,0 +1,48 @@
+image: docker:git
+
+stages:
+  - build
+ 
+.docker:
+  image: docker:git
+  services:
+    - docker:dind
+  variables:
+    DOCKER_TLS_CERTDIR: ""
+
+build_only:
+  extends: .docker
+  stage: build
+  except:
+    - master
+  script:  
+    - docker build -t $CI_REGISTRY/$CI_PROJECT_PATH:php7.4 php8.0
+    - docker build -t $CI_REGISTRY/$CI_PROJECT_PATH:php7.4 php7.4
+    - docker build -t $CI_REGISTRY/$CI_PROJECT_PATH:php7.3 php7.3
+    - docker build -t $CI_REGISTRY/$CI_PROJECT_PATH:php7.2 php7.2
+    - docker build -t $CI_REGISTRY/$CI_PROJECT_PATH:php7.4-composer-1 php7.4-composer-1
+  
+build_deploy:
+  extends: .docker
+  stage: build
+  only:
+    - master
+  script:  
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
+
+    - docker build --no-cache -t $CI_REGISTRY/$CI_PROJECT_PATH:latest php8.0
+    - docker push $CI_REGISTRY/$CI_PROJECT_PATH:latest
+    - docker build -t $CI_REGISTRY/$CI_PROJECT_PATH:php8.0 php8.0
+    - docker push $CI_REGISTRY/$CI_PROJECT_PATH:php8.0
+    
+    - docker build -t $CI_REGISTRY/$CI_PROJECT_PATH:php7.4 php7.4
+    - docker push $CI_REGISTRY/$CI_PROJECT_PATH:php7.4
+
+    - docker build -t $CI_REGISTRY/$CI_PROJECT_PATH:php7.3 php7.3
+    - docker push $CI_REGISTRY/$CI_PROJECT_PATH:php7.3
+    
+    - docker build -t $CI_REGISTRY/$CI_PROJECT_PATH:php7.2 php7.2
+    - docker push $CI_REGISTRY/$CI_PROJECT_PATH:php7.2
+
+    - docker build -t $CI_REGISTRY/$CI_PROJECT_PATH:php7.4-composer-1 php7.4-composer-1
+    - docker push $CI_REGISTRY/$CI_PROJECT_PATH:php7.4-composer-1
