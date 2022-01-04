@@ -1,5 +1,8 @@
 FROM php:7.4-apache
 
+RUN cp "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
+RUN sed -i 's/memory_limit = .*/memory_limit = '-1'/' $PHP_INI_DIR/php.ini
+
 RUN a2enmod rewrite
 
 # install the PHP extensions we need
@@ -58,9 +61,13 @@ ENV COMPOSER_ALLOW_SUPERUSER 1
 RUN curl -o /tmp/composer-setup.php https://getcomposer.org/installer \
   && php /tmp/composer-setup.php --no-ansi --install-dir=/usr/local/bin --filename=composer && rm -rf /tmp/composer-setup.php
 
-RUN wget -c https://phpmd.org/static/latest/phpmd.phar \
-  && chmod +x phpmd.phar \
-  && mv phpmd.phar /usr/local/bin/phpmd
+#code standards
+RUN composer global require squizlabs/php_codesniffer
+RUN composer global require dealerdirect/phpcodesniffer-composer-installer
+
+RUN composer global require drupal/coder
+
+RUN composer global require phpmd/phpmd
 
 RUN wget https://github.com/smmccabe/phpdebt/releases/download/1.0.2/phpdebt.phar \
   && chmod +x phpdebt.phar \
@@ -101,6 +108,4 @@ RUN SCVERSION="stable" \
   && mv "shellcheck-${SCVERSION}/shellcheck" /usr/local/bin/ \
   && rm -rf "shellcheck-${SCVERSION}"
 
-RUN npm -g install smmccabe/commercebot
-  
 RUN apt-get update && apt-get install -y rsync  
